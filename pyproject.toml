@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "dql_mec"
+version = "0.1.0"
+description = "Deep Reinforcement Learning for Task Offloading in Mobile Edge Computing Systems"
+authors = ["Avinash Ranganath <nash911@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.6,<3.7"
+tensorflow = "^1.15"
+numpy = "^1.18.5"
+matplotlib = "^3.3.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
