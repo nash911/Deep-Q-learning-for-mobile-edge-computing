@@ -37,7 +37,8 @@ def reward_fun(delay, max_delay, unfinish_indi):
     return reward
 
 
-def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir=None):
+def train(env, iot_RL_list, num_episodes, learning_freq=10, show=False, random=False,
+          training_dir=None):
     start_time = time.time()
 
     RL_step = 0
@@ -170,7 +171,7 @@ def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir
             lstm_state_all = lstm_state_all_
 
             # CONTROL LEARNING START TIME AND FREQUENCY
-            if (RL_step > 200) and (RL_step % 10 == 0):
+            if (RL_step > 200) and (RL_step % learning_freq == 0):
                 for iot in range(env.n_iot):
                     iot_RL_list[iot].learn()
 
@@ -365,7 +366,8 @@ def main(args):
                                         ))
 
     # TRAIN THE SYSTEM
-    train(env, iot_RL_list, args.num_episodes, args.plot, args.random, training_dir)
+    train(env, iot_RL_list, args.num_episodes, args.learning_freq, args.plot, args.random,
+          training_dir)
     print('Training Finished')
 
     evaluate(env, iot_RL_list, 20, args.random, training_dir)
@@ -382,8 +384,8 @@ if __name__ == "__main__":
                         help='number of IOT devices (default: 50)')
     parser.add_argument('--num_fog', type=int, default=5,
                         help='number of FOG stations (default: 5)')
-    parser.add_argument('--task_arrive_prob', type=float, default=0.3,
-                        help='Task Arrive Probability (default: 0.3)')
+    parser.add_argument('--task_arrival_prob', type=float, default=0.3,
+                        help='Task Arrival Probability (default: 0.3)')
     parser.add_argument('--num_episodes', type=int, default=1000,
                         help='number of training episodes (default: 1000)')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -392,6 +394,8 @@ if __name__ == "__main__":
                         help='learning rate for optimizer (default: 0.001)')
     parser.add_argument('--optimizer', type=str, default='rms_prop',
                         help='optimizer for updating the NN (default: rms_prop)')
+    parser.add_argument('--learning_freq', type=int, default=10,
+                        help='frequency of updating main/eval network (default: 10)')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--plot',  default=False, action='store_true',
                         help='plot learning curve (default: False)')
