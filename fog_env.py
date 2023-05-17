@@ -5,7 +5,7 @@ import queue
 
 class Offload:
 
-    def __init__(self, num_iot, num_fog, num_time, max_delay):
+    def __init__(self, num_iot, num_fog, num_time, max_delay, task_arrive_prob):
 
         # INPUT DATA
         self.n_iot = num_iot
@@ -28,7 +28,7 @@ class Offload:
         self.max_delay = max_delay # time slots
 
         # BITARRIVE_SET (MARKOVIAN)
-        self.task_arrive_prob = 0.3
+        self.task_arrive_prob = task_arrive_prob # 0.3
         self.max_bit_arrive = 5 # Mbits
         self.min_bit_arrive = 2 # Mbits
         self.bitArrive_set = np.arange(self.min_bit_arrive, self.max_bit_arrive, 0.1)

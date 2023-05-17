@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
-# import matplotlib.pyplot as plt
 from collections import deque
+
 
 class DeepQNetwork:
 
@@ -10,18 +10,20 @@ class DeepQNetwork:
                  n_features,
                  n_lstm_features,
                  n_time,
-                 learning_rate = 0.01,
-                 reward_decay = 0.9,
-                 e_greedy = 0.99,
-                 replace_target_iter = 200,  # each 200 steps, update target net
-                 memory_size = 500,  # maximum of memory
+                 learning_rate=0.01,
+                 reward_decay=0.9,
+                 e_greedy=0.99,
+                 replace_target_iter=200,  # each 200 steps, update target net
+                 memory_size=500,  # maximum of memory
                  batch_size=32,
-                 e_greedy_increment= 0.00025,
-                 n_lstm_step = 10,
-                 dueling = True,
-                 double_q = True,
-                 N_L1 = 20,
-                 N_lstm = 20):
+                 e_greedy_increment=0.00025,
+                 n_lstm_step=10,
+                 dueling=True,
+                 double_q=True,
+                 N_L1=20,
+                 N_lstm=20,
+                 optimizer='rms_prop',
+                 seed=0):
 
         self.n_actions = n_actions
         self.n_features = n_features
@@ -38,6 +40,14 @@ class DeepQNetwork:
         self.double_q = double_q
         self.learn_step_counter = 0
         self.N_L1 = N_L1
+        self.seed = seed
+
+        if optimizer not in ['adam', 'gd', 'rms_prop']:
+            raise SystemExit(
+                "Invalid optimizer: {optimizer}.\nChoose one of " +
+                "['adam', 'rms_prop', 'gd'], via CLI with flag --optimizer")
+        else:
+            self.optimizer = optimizer
 
         # lstm
         self.N_lstm = N_lstm
@@ -46,16 +56,16 @@ class DeepQNetwork:
 
         # initialize zero memory np.hstack((s, [a, r], s_, lstm_s, lstm_s_))
         self.memory = np.zeros((self.memory_size, self.n_features + 1 + 1
-                                    + self.n_features + self.n_lstm_state + self.n_lstm_state))
+                                + self.n_features + self.n_lstm_state + self.n_lstm_state))
 
         # consist of [target_net, evaluate_net]
-        self._build_net()
+        self._build_net(optimizer=self.optimizer, seed=self.seed)
 
         # replace the parameters in target net
         t_params = tf.get_collection('target_net_params')  # obtain the parameters in target_net
         e_params = tf.get_collection('eval_net_params')  # obtain the parameters in eval_net
         self.replace_target_op = [tf.assign(t, e) for t, e in
-                                      zip(t_params, e_params)]  # update the parameters in target_net
+                                  zip(t_params, e_params)]  # update the parameters in target_net
 
         self.sess = tf.Session()
 
@@ -70,9 +80,10 @@ class DeepQNetwork:
 
         self.store_q_value = list()
 
-    def _build_net(self):
+    def _build_net(self, optimizer='rms_prop', seed=0):
 
         tf.reset_default_graph()
+        tf.set_random_seed(seed)
 
         def build_layers(s,lstm_s,c_names, n_l1, n_lstm, w_initializer, b_initializer):
 
@@ -154,7 +165,13 @@ class DeepQNetwork:
         with tf.variable_scope('loss'):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target,self.q_eval))
         with tf.variable_scope('train'):
-            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+            if optimizer == 'rms_prop':
+                self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+            elif optimizer == 'adam':
+                self._train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+            elif optimizer == 'gd':
+                self._train_op = \
+                    tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss)
 
     def store_transition(self, s, lstm_s,  a, r, s_, lstm_s_):
         # RL.store_transition(observation,action,reward,observation_)
@@ -175,12 +192,12 @@ class DeepQNetwork:
 
         self.lstm_history.append(lstm_s)
 
-    def choose_action(self, observation):
+    def choose_action(self, observation, inference=False):
         # the shape of the observation (1, size_of_observation)
         # x1 = np.array([1, 2, 3, 4, 5]), x1_new = x1[np.newaxis, :], now, the shape of x1_new is (1, 5)
         observation = observation[np.newaxis, :]
 
-        if np.random.uniform() < self.epsilon:
+        if inference or np.random.uniform() < self.epsilon:
 
             # lstm only contains history, there is no current observation
             lstm_observation = np.array(self.lstm_history)
@@ -207,7 +224,7 @@ class DeepQNetwork:
         if self.learn_step_counter % self.replace_target_iter == 0:
             # run the self.replace_target_op in __int__
             self.sess.run(self.replace_target_op)
-            print('\ntarget_params_replaced\n')
+            # print(f"{self.learn_step_counter}: target_params_replaced\n")
 
         # randomly pick [batch_size] memory from memory np.hstack((s, [a, r], s_, lstm_s, lstm_s_))
         if self.memory_counter > self.memory_size:
