@@ -37,7 +37,7 @@ def reward_fun(delay, max_delay, unfinish_indi):
     return reward
 
 
-def train(env, iot_RL_list, num_episodes, show=False, training_dir=None):
+def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir=None):
     start_time = time.time()
 
     RL_step = 0
@@ -95,8 +95,11 @@ def train(env, iot_RL_list, num_episodes, show=False, training_dir=None):
                     # if there is no task, action = 0 (also need to be stored)
                     action_all[iot_index] = 0
                 else:
-                    action_all[iot_index] = \
-                        iot_RL_list[iot_index].choose_action(observation)
+                    if random:  # Follow a random action
+                        action_all[iot_index] = np.random.randint(env.n_actions)
+                    else:  # Follow RL agent action
+                        action_all[iot_index] = \
+                            iot_RL_list[iot_index].choose_action(observation)
 
                 if observation[0] != 0:
                     iot_RL_list[iot_index].do_store_action(episode, env.time_count,
@@ -248,7 +251,7 @@ def main(args):
                                         ))
 
     # TRAIN THE SYSTEM
-    train(env, iot_RL_list, args.num_episodes, args.plot, training_dir)
+    train(env, iot_RL_list, args.num_episodes, args.plot, args.random, training_dir)
     print('Training Finished')
 
 
@@ -278,6 +281,8 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--plot',  default=False, action='store_true',
                         help='plot learning curve (default: False)')
+    parser.add_argument('--random',  default=False, action='store_true',
+                        help='follow a random policy (default: False)')
     parser.add_argument('--path', type=str, default=None,
                         help='path postfix for saving training results (default: None)')
     args = parser.parse_args()
