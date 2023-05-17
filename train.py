@@ -207,7 +207,8 @@ def train(env, iot_RL_list, num_episodes, learning_freq=10, show=False, random=F
     input("Completed training.\nPress Enter to Finish")
 
 
-def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None):
+def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None,
+             plot_x=None):
     episode_rewards = list()
     episode_dropped = list()
     episode_delay = list()
@@ -307,9 +308,9 @@ def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None):
           f"Avg. Eval Delay: {avg_episode_delay}")
 
     eval_results = dict()
-    eval_results['avg_rewards'] = avg_episode_rewards
-    eval_results['avg_dropped'] = avg_episode_dropped
-    eval_results['avg_delay'] = avg_episode_delay
+    eval_results['avg_rewards'] = (plot_x, avg_episode_rewards)
+    eval_results['avg_dropped'] = (plot_x, avg_episode_dropped)
+    eval_results['avg_delay'] = (plot_x, avg_episode_delay)
 
     with open(training_dir + 'results/results.dat', 'w') as jf:
         json.dump(eval_results, jf, indent=4)
@@ -348,7 +349,7 @@ def main(args):
         json.dump(plot_dict, jf, indent=4)
 
     # GENERATE ENVIRONMENT
-    env = Offload(args.num_iot, args.num_fog, NUM_TIME, MAX_DELAY, args.task_arrive_prob)
+    env = Offload(args.num_iot, args.num_fog, NUM_TIME, MAX_DELAY, args.task_arrival_prob)
 
     # GENERATE MULTIPLE CLASSES FOR RL
     iot_RL_list = list()
@@ -370,7 +371,23 @@ def main(args):
           training_dir)
     print('Training Finished')
 
-    evaluate(env, iot_RL_list, 20, args.random, training_dir)
+    if args.training_var is not None:
+        if args.training_var == 'lr':
+            plot_x = args.lr
+        elif args.training_var == 'batch_size':
+            plot_x = args.batch_size
+        elif args.training_var == 'optimizer':
+            plot_x = args.optimizer
+        elif args.training_var == 'learning_freq':
+            plot_x = args.learning_freq
+        elif args.training_var == 'task_arrival_prob':
+            plot_x = args.task_arrival_prob
+        elif args.training_var == 'num_iot':
+            plot_x = args.num_iot
+    else:
+        plot_x = None
+
+    evaluate(env, iot_RL_list, 20, args.random, training_dir, plot_x)
 
 
 if __name__ == "__main__":
@@ -403,6 +420,8 @@ if __name__ == "__main__":
                         help='follow a random policy (default: False)')
     parser.add_argument('--path', type=str, default=None,
                         help='path postfix for saving training results (default: None)')
+    parser.add_argument('--training_var', type=str, default=None,
+                        help='training variant: {lr, task_prob, num_iot, ...}')
     parser.add_argument('--plot_color', type=str, default='red',
                         help='plot color (default: red)')
     parser.add_argument('--plot_label', type=str, default='X',
