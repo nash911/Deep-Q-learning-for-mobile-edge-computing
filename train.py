@@ -342,6 +342,10 @@ def main(args):
     with open(training_dir + 'params/params.dat', 'w') as jf:
         json.dump(vars(args), jf, indent=4)
 
+    plot_dict = {'color': args.plot_color, 'label': args.plot_label}
+    with open(training_dir + 'plots/plot_props.dat', 'w') as jf:
+        json.dump(plot_dict, jf, indent=4)
+
     # GENERATE ENVIRONMENT
     env = Offload(args.num_iot, args.num_fog, NUM_TIME, MAX_DELAY, args.task_arrive_prob)
 
@@ -388,8 +392,6 @@ if __name__ == "__main__":
                         help='learning rate for optimizer (default: 0.001)')
     parser.add_argument('--optimizer', type=str, default='rms_prop',
                         help='optimizer for updating the NN (default: rms_prop)')
-    parser.add_argument('--data-path', type=str, default=None,
-                        help='Path to the data file (default: None)')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--plot',  default=False, action='store_true',
                         help='plot learning curve (default: False)')
@@ -397,6 +399,10 @@ if __name__ == "__main__":
                         help='follow a random policy (default: False)')
     parser.add_argument('--path', type=str, default=None,
                         help='path postfix for saving training results (default: None)')
+    parser.add_argument('--plot_color', type=str, default='red',
+                        help='plot color (default: red)')
+    parser.add_argument('--plot_label', type=str, default='X',
+                        help='plot label (default: X)')
     args = parser.parse_args()
 
     main(args)
