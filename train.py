@@ -211,9 +211,9 @@ def main(args):
 
     # Create a timestamp directory to save model, parameter and log files
     training_dir = \
-        ('training/' + str(datetime.now().date()) + '_' +
-         str(datetime.now().hour).zfill(2) + '-' + str(datetime.now().minute).zfill(2) +
-         '/')
+        ('training/' + ('' if args.path is None else args.path + '/') +
+         str(datetime.now().date()) + '_' + str(datetime.now().hour).zfill(2) + '-' +
+         str(datetime.now().minute).zfill(2) + '/')
 
     # Delete if a directory with the same name already exists
     if os.path.exists(training_dir):
@@ -222,7 +222,7 @@ def main(args):
     # Create empty directories for saving model, parameter and log files
     os.makedirs(training_dir)
     os.makedirs(training_dir + 'plots')
-    os.makedirs(training_dir + 'models')
+    os.makedirs(training_dir + 'results')
     os.makedirs(training_dir + 'params')
 
     # Dump params to file
@@ -278,6 +278,8 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--plot',  default=False, action='store_true',
                         help='plot learning curve (default: False)')
+    parser.add_argument('--path', type=str, default=None,
+                        help='path postfix for saving training results (default: None)')
     args = parser.parse_args()
 
     main(args)
