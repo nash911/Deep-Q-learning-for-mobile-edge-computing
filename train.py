@@ -37,7 +37,8 @@ def reward_fun(delay, max_delay, unfinish_indi):
     return reward
 
 
-def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir=None):
+def train(env, iot_RL_list, num_episodes, learning_freq=10, show=False, random=False,
+          training_dir=None):
     start_time = time.time()
 
     RL_step = 0
@@ -170,7 +171,7 @@ def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir
             lstm_state_all = lstm_state_all_
 
             # CONTROL LEARNING START TIME AND FREQUENCY
-            if (RL_step > 200) and (RL_step % 10 == 0):
+            if (RL_step > 200) and (RL_step % learning_freq == 0):
                 for iot in range(env.n_iot):
                     iot_RL_list[iot].learn()
 
@@ -206,7 +207,8 @@ def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir
     input("Completed training.\nPress Enter to Finish")
 
 
-def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None):
+def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None,
+             plot_x=None):
     episode_rewards = list()
     episode_dropped = list()
     episode_delay = list()
@@ -306,9 +308,9 @@ def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None):
           f"Avg. Eval Delay: {avg_episode_delay}")
 
     eval_results = dict()
-    eval_results['avg_rewards'] = avg_episode_rewards
-    eval_results['avg_dropped'] = avg_episode_dropped
-    eval_results['avg_delay'] = avg_episode_delay
+    eval_results['avg_rewards'] = (plot_x, avg_episode_rewards)
+    eval_results['avg_dropped'] = (plot_x, avg_episode_dropped)
+    eval_results['avg_delay'] = (plot_x, avg_episode_delay)
 
     with open(training_dir + 'results/results.dat', 'w') as jf:
         json.dump(eval_results, jf, indent=4)
@@ -342,8 +344,12 @@ def main(args):
     with open(training_dir + 'params/params.dat', 'w') as jf:
         json.dump(vars(args), jf, indent=4)
 
+    plot_dict = {'color': args.plot_color, 'label': args.plot_label}
+    with open(training_dir + 'plots/plot_props.dat', 'w') as jf:
+        json.dump(plot_dict, jf, indent=4)
+
     # GENERATE ENVIRONMENT
-    env = Offload(args.num_iot, args.num_fog, NUM_TIME, MAX_DELAY, args.task_arrive_prob)
+    env = Offload(args.num_iot, args.num_fog, NUM_TIME, MAX_DELAY, args.task_arrival_prob)
 
     # GENERATE MULTIPLE CLASSES FOR RL
     iot_RL_list = list()
@@ -361,10 +367,27 @@ def main(args):
                                         ))
 
     # TRAIN THE SYSTEM
-    train(env, iot_RL_list, args.num_episodes, args.plot, args.random, training_dir)
+    train(env, iot_RL_list, args.num_episodes, args.learning_freq, args.plot, args.random,
+          training_dir)
     print('Training Finished')
 
-    evaluate(env, iot_RL_list, 20, args.random, training_dir)
+    if args.training_var is not None:
+        if args.training_var == 'lr':
+            plot_x = args.lr
+        elif args.training_var == 'batch_size':
+            plot_x = args.batch_size
+        elif args.training_var == 'optimizer':
+            plot_x = args.optimizer
+        elif args.training_var == 'learning_freq':
+            plot_x = args.learning_freq
+        elif args.training_var == 'task_arrival_prob':
+            plot_x = args.task_arrival_prob
+        elif args.training_var == 'num_iot':
+            plot_x = args.num_iot
+    else:
+        plot_x = None
+
+    evaluate(env, iot_RL_list, 20, args.random, training_dir, plot_x)
 
 
 if __name__ == "__main__":
@@ -378,8 +401,8 @@ if __name__ == "__main__":
                         help='number of IOT devices (default: 50)')
     parser.add_argument('--num_fog', type=int, default=5,
                         help='number of FOG stations (default: 5)')
-    parser.add_argument('--task_arrive_prob', type=float, default=0.3,
-                        help='Task Arrive Probability (default: 0.3)')
+    parser.add_argument('--task_arrival_prob', type=float, default=0.3,
+                        help='Task Arrival Probability (default: 0.3)')
     parser.add_argument('--num_episodes', type=int, default=1000,
                         help='number of training episodes (default: 1000)')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -388,8 +411,8 @@ if __name__ == "__main__":
                         help='learning rate for optimizer (default: 0.001)')
     parser.add_argument('--optimizer', type=str, default='rms_prop',
                         help='optimizer for updating the NN (default: rms_prop)')
-    parser.add_argument('--data-path', type=str, default=None,
-                        help='Path to the data file (default: None)')
+    parser.add_argument('--learning_freq', type=int, default=10,
+                        help='frequency of updating main/eval network (default: 10)')
     parser.add_argument('--seed', type=int, default=0, help='random seed (default: 0)')
     parser.add_argument('--plot',  default=False, action='store_true',
                         help='plot learning curve (default: False)')
@@ -397,6 +420,12 @@ if __name__ == "__main__":
                         help='follow a random policy (default: False)')
     parser.add_argument('--path', type=str, default=None,
                         help='path postfix for saving training results (default: None)')
+    parser.add_argument('--training_var', type=str, default=None,
+                        help='training variant: {lr, task_prob, num_iot, ...}')
+    parser.add_argument('--plot_color', type=str, default='red',
+                        help='plot color (default: red)')
+    parser.add_argument('--plot_label', type=str, default='X',
+                        help='plot label (default: X)')
     args = parser.parse_args()
 
     main(args)
