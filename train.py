@@ -206,6 +206,116 @@ def train(env, iot_RL_list, num_episodes, show=False, random=False, training_dir
     input("Completed training.\nPress Enter to Finish")
 
 
+def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None):
+    episode_rewards = list()
+    episode_dropped = list()
+    episode_delay = list()
+
+    for episode in range(num_episodes):
+        # BITRATE ARRIVAL
+        bitarrive = np.random.uniform(env.min_bit_arrive, env.max_bit_arrive,
+                                      size=[env.n_time, env.n_iot])
+        task_prob = env.task_arrive_prob
+        bitarrive = bitarrive * (
+            np.random.uniform(0, 1, size=[env.n_time, env.n_iot]) < task_prob)
+        bitarrive[-env.max_delay:, :] = np.zeros([env.max_delay, env.n_iot])
+
+        # rewards_dict = {d: [] for d in range(env.n_iot)}
+        rewards_list = list()
+        dropped_list = list()
+        delay_list = list()
+
+        reward_indicator = np.zeros([env.n_time, env.n_iot])
+
+        # INITIALIZE OBSERVATION
+        observation_all, lstm_state_all = env.reset(bitarrive)
+
+        # Episode until done
+        while True:
+
+            # PERFORM ACTION
+            action_all = np.zeros([env.n_iot])
+            for iot_index in range(env.n_iot):
+
+                observation = np.squeeze(observation_all[iot_index, :])
+
+                if np.sum(observation) == 0:
+                    # if there is no task, action = 0 (also need to be stored)
+                    action_all[iot_index] = 0
+                else:
+                    if random:  # Follow a random action
+                        action_all[iot_index] = np.random.randint(env.n_actions)
+                    else:  # Follow RL agent action
+                        action_all[iot_index] = \
+                            iot_RL_list[iot_index].choose_action(observation,
+                                                                 inference=True)
+
+                if observation[0] != 0:
+                    iot_RL_list[iot_index].do_store_action(episode, env.time_count,
+                                                           action_all[iot_index])
+
+            # OBSERVE THE NEXT STATE AND PROCESS DELAY (REWARD)
+            observation_all_, lstm_state_all_, done = env.step(action_all)
+
+            process_delay = env.process_delay
+            unfinish_indi = env.process_delay_unfinish_ind
+
+            # STORE MEMORY; STORE TRANSITION IF THE TASK PROCESS DELAY IS JUST UPDATED
+            for iot_index in range(env.n_iot):
+                update_index = np.where((1 - reward_indicator[:, iot_index]) *
+                                        process_delay[:, iot_index] > 0)[0]
+
+                if len(update_index) != 0:
+                    for update_ii in range(len(update_index)):
+                        time_index = update_index[update_ii]
+
+                        reward = reward_fun(
+                            process_delay[time_index, iot_index], env.max_delay,
+                            unfinish_indi[time_index, iot_index])
+
+                        dropped_list.append(unfinish_indi[time_index, iot_index])
+                        if not unfinish_indi[time_index, iot_index]:
+                            delay_list.append(process_delay[time_index, iot_index])
+
+                        reward_indicator[time_index, iot_index] = 1
+
+                        rewards_list.append(-reward)
+
+            # UPDATE OBSERVATION
+            observation_all = observation_all_
+
+            # GAME ENDS
+            if done:
+                break
+
+        avg_reward = np.mean(rewards_list)/env.n_iot
+        episode_rewards.append(avg_reward)
+
+        dropped_ratio = np.mean(dropped_list)/env.n_iot
+        episode_dropped.append(dropped_ratio)
+
+        avg_delay = np.mean(delay_list)/env.n_iot
+        episode_delay.append(avg_delay)
+
+    avg_episode_rewards = np.mean(episode_rewards)
+    avg_episode_dropped = np.mean(episode_dropped)
+    avg_episode_delay = np.mean(episode_delay)
+
+    print(f"\nAvg. Eval Reward: {avg_episode_rewards} - " +
+          f"Avg. Eval Dropped: {avg_episode_dropped} - " +
+          f"Avg. Eval Delay: {avg_episode_delay}")
+
+    eval_results = dict()
+    eval_results['avg_rewards'] = avg_episode_rewards
+    eval_results['avg_dropped'] = avg_episode_dropped
+    eval_results['avg_delay'] = avg_episode_delay
+
+    with open(training_dir + 'results/results.dat', 'w') as jf:
+        json.dump(eval_results, jf, indent=4)
+
+    input("Completed Evaluation")
+
+
 def main(args):
     # Set random generator seed
     tf.set_random_seed(args.seed)
@@ -253,6 +363,8 @@ def main(args):
     # TRAIN THE SYSTEM
     train(env, iot_RL_list, args.num_episodes, args.plot, args.random, training_dir)
     print('Training Finished')
+
+    evaluate(env, iot_RL_list, 20, args.random, training_dir)
 
 
 if __name__ == "__main__":

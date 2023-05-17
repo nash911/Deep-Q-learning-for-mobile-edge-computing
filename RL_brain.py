@@ -192,12 +192,12 @@ class DeepQNetwork:
 
         self.lstm_history.append(lstm_s)
 
-    def choose_action(self, observation):
+    def choose_action(self, observation, inference=False):
         # the shape of the observation (1, size_of_observation)
         # x1 = np.array([1, 2, 3, 4, 5]), x1_new = x1[np.newaxis, :], now, the shape of x1_new is (1, 5)
         observation = observation[np.newaxis, :]
 
-        if np.random.uniform() < self.epsilon:
+        if inference or np.random.uniform() < self.epsilon:
 
             # lstm only contains history, there is no current observation
             lstm_observation = np.array(self.lstm_history)
