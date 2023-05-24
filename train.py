@@ -50,15 +50,6 @@ def train(env, iot_RL_list, num_episodes, learning_freq=10, show=False, random=F
     fig, axs = plt.subplots(3, figsize=(10, 12), sharex=True)
 
     for episode in range(num_episodes):
-        # BITRATE ARRIVAL
-        bitarrive = np.random.uniform(env.min_bit_arrive, env.max_bit_arrive,
-                                      size=[env.n_time, env.n_iot])
-        task_prob = env.task_arrive_prob
-        bitarrive = bitarrive * (
-            np.random.uniform(0, 1, size=[env.n_time, env.n_iot]) < task_prob)
-        bitarrive[-env.max_delay:, :] = np.zeros([env.max_delay, env.n_iot])
-
-        # rewards_dict = {d: [] for d in range(env.n_iot)}
         rewards_list = list()
         dropped_list = list()
         delay_list = list()
@@ -81,7 +72,7 @@ def train(env, iot_RL_list, num_episodes, learning_freq=10, show=False, random=F
         reward_indicator = np.zeros([env.n_time, env.n_iot])
 
         # INITIALIZE OBSERVATION
-        observation_all, lstm_state_all = env.reset(bitarrive)
+        observation_all, lstm_state_all = env.reset()
 
         # TRAIN DRL
         while True:
@@ -214,15 +205,6 @@ def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None,
     episode_delay = list()
 
     for episode in range(num_episodes):
-        # BITRATE ARRIVAL
-        bitarrive = np.random.uniform(env.min_bit_arrive, env.max_bit_arrive,
-                                      size=[env.n_time, env.n_iot])
-        task_prob = env.task_arrive_prob
-        bitarrive = bitarrive * (
-            np.random.uniform(0, 1, size=[env.n_time, env.n_iot]) < task_prob)
-        bitarrive[-env.max_delay:, :] = np.zeros([env.max_delay, env.n_iot])
-
-        # rewards_dict = {d: [] for d in range(env.n_iot)}
         rewards_list = list()
         dropped_list = list()
         delay_list = list()
@@ -230,7 +212,7 @@ def evaluate(env, iot_RL_list, num_episodes, random=False, training_dir=None,
         reward_indicator = np.zeros([env.n_time, env.n_iot])
 
         # INITIALIZE OBSERVATION
-        observation_all, lstm_state_all = env.reset(bitarrive)
+        observation_all, lstm_state_all = env.reset()
 
         # Episode until done
         while True:

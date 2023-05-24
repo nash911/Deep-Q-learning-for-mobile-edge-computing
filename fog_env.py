@@ -84,15 +84,20 @@ class Offload:
         self.fog_drop = np.zeros([self.n_iot, self.n_fog])
 
     # reset the network scenario
-    def reset(self, bitArrive):
+    def reset(self):
 
         # test
         self.drop_trans_count = 0
         self.drop_fog_count = 0
         self.drop_iot_count = 0
 
-        # BITRATE
-        self.bitArrive = bitArrive
+        # BITRATE ARRIVAL
+        self.bitArrive = np.random.uniform(self.min_bit_arrive, self.max_bit_arrive,
+                                           size=(self.n_time, self.n_iot))
+        self.bitArrive = \
+            self.bitArrive * (np.random.uniform(0, 1, size=[self.n_time, self.n_iot]) <
+                              self.task_arrive_prob)
+        self.bitArrive[-self.max_delay:, :] = np.zeros([self.max_delay, self.n_iot])
 
         # TIME COUNT
         self.time_count = int(0)
